@@ -33,6 +33,7 @@ colors_lst = {
 'GREEN' :'\x1b[32m',
 'YELLOW':'\x1b[33m',
 'PINK'  :'\x1b[35m',
+'GRAY'  :'\x1b[37m',
 'BLUE'  :'\x1b[01;34m',
 'CYAN'  :'\x1b[36m',
 'NORMAL':'\x1b[0m',

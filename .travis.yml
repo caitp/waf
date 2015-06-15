@@ -1,0 +1,11 @@
+language: objective-c
+os:
+  #TODO: Travis-CI is broken for any kind of multi-platform testing at the moment :(
+  # - linux
+  - osx
+
+before_script:
+  - source ./scripts/ci/travis.sh
+script:
+  - ./waf-light --make-waf
+  - ./tests/run_tests.py
