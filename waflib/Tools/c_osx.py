@@ -92,16 +92,23 @@ def create_task_macapp(self):
 		self.bld.install_files(inst_to, n1, chmod=Utils.O755)
 
 		if getattr(self, 'mac_resources', None):
+			resources_root = getattr(self, 'mac_resources_path', None)
 			res_dir = n1.parent.parent.make_node('Resources')
 			inst_to = getattr(self, 'install_path', '/Applications') + '/%s/Resources' % name
-			for x in self.to_list(self.mac_resources):
-				node = self.path.find_node(x)
+			try:
+				nodes = self.to_nodes(self.mac_resources)
+				resource_paths = [x.abspath() for x in nodes]
+			except:
+				# Legacy API: list of paths
+				nodes = [self.path.find_node(path) for path in self.to_list(self.mac_resources)]
+				resource_paths = None
+
+			for node in nodes:
 				if not node:
 					raise Errors.WafError('Missing mac_resource %r in %r' % (x, self))
-
-				parent = node.parent
+				parent = self.path.find_node(resources_root) if resources_root else node.parent
 				if os.path.isdir(node.abspath()):
-					nodes = node.ant_glob('**')
+					nodes = [x for x in node.ant_glob('**') if not resource_paths or x.abspath() in resource_paths]
 				else:
 					nodes = [node]
 				for node in nodes:

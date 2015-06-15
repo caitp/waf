@@ -1,0 +1,111 @@
+#! /usr/bin/env python3
+
+import platform, sys, inspect
+
+top = "."
+out = "bin"
+
+def options(opt):
+	opt.load("compiler_c")
+
+def configure(conf):
+	conf.load("compiler_c")
+
+def build(bld):
+	# Only testing feature on Darwin
+	if (platform.system() != "Darwin"):
+		return
+
+	bld.program(
+		features="c cprogram",
+		target="SpaceSeparatedListTest",
+		source="src/main.c",
+		mac_app=True,
+		mac_resources="""
+			src/Resources/MainMenu.nib
+			src/Resources/controls/Carousel.nib
+			src/Resources/controls/Poster.nib
+			""")
+	bld.add_post_fun(test1)
+
+	bld.program(
+		features="c cprogram",
+		target="AntGlobStarStarTest",
+		source="src/main.c",
+		mac_app=True,
+		mac_resources=bld.path.ant_glob("src/Resources/**"))
+	bld.add_post_fun(test2)
+
+	bld.program(
+		features="c cprogram",
+		target="AntGlobRelativeToResourcesPathTest",
+		source="src/main.c",
+		mac_app=True,
+		mac_resources_path="src/Resources",
+		mac_resources=bld.path.ant_glob("src/Resources/controls/**", dirs=True))
+	bld.add_post_fun(test3)
+
+	bld.program(
+		features="c cprogram",
+		target="AntGlobExcludeTest",
+		source="src/main.c",
+		mac_app=True,
+		mac_resources=bld.path.ant_glob("src/Resources/**", excl="**/Carousel*"))
+	bld.add_post_fun(test4)
+
+	bld.program(
+		features="c cprogram",
+		target="LegacyDirectoryTest",
+		source="src/main.c",
+		mac_app=True,
+		mac_resources="src/Resources")
+	bld.add_post_fun(test5)
+
+def assert_eq(expected, actual):
+	exception_string = """
+Expected `{expected}`
+but instead got `{actual}`
+"""
+	if (expected != actual):
+		raise Exception(exception_string.format(expected=expected,actual=actual))
+
+def assert_throws(closure):
+	exception_string = "Expected {} to throw, but no exception was thrown"
+	try:
+		closure()
+	except Exception, e:
+		pass
+	else:
+		raise Exception(exception_string.format(inspect.getsource(closure)))
+	finally:
+		pass
+
+def test1(ctx):
+	app = ctx.path.make_node("bin/SpaceSeparatedListTest.app/Contents/Resources")
+	assert_eq("fake MainMenu.nib", app.make_node("MainMenu.nib").read())
+	assert_eq("fake Carousel.nib", app.make_node("Carousel.nib").read())
+	assert_eq("fake Poster.nib", app.make_node("Poster.nib").read())
+
+def test2(ctx):
+	app = ctx.path.make_node("bin/AntGlobStarStarTest.app/Contents/Resources")
+	assert_eq("fake MainMenu.nib", app.make_node("MainMenu.nib").read())
+	assert_eq("fake Carousel.nib", app.make_node("Carousel.nib").read())
+	assert_eq("fake Poster.nib", app.make_node("Poster.nib").read())
+
+def test3(ctx):
+	app = ctx.path.make_node("bin/AntGlobRelativeToResourcesPathTest.app/Contents/Resources")
+	assert_throws(lambda: app.make_node("MainMenu.nib").read())
+	assert_eq("fake Carousel.nib", app.make_node("controls/Carousel.nib").read())
+	assert_eq("fake Poster.nib", app.make_node("controls/Poster.nib").read())
+
+def test4(ctx):
+	app = ctx.path.make_node("bin/AntGlobExcludeTest.app/Contents/Resources")
+	assert_throws(lambda: app.make_node("Carousel.nib").read())
+	assert_eq("fake MainMenu.nib", app.make_node("MainMenu.nib").read())
+	assert_eq("fake Poster.nib", app.make_node("Poster.nib").read())
+
+def test5(ctx):
+	app = ctx.path.make_node("bin/LegacyDirectoryTest.app/Contents/Resources")
+	assert_eq("fake MainMenu.nib", app.make_node("Resources/MainMenu.nib").read())
+	assert_eq("fake Carousel.nib", app.make_node("Resources/controls/Carousel.nib").read())
+	assert_eq("fake Poster.nib", app.make_node("Resources/controls/Poster.nib").read())
